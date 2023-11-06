@@ -119,7 +119,33 @@ def evaluate_model(model, data_loader, num_classes=10):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+    metrics = {}
+    metrics['accuracy'] = 0
+    metrics['precision'] = np.zeros(num_classes)
+    metrics['recall'] = np.zeros(num_classes)
+    metrics['f1_beta'] = np.zeros(num_classes)
 
+    num_processed_points = 0
+    for image_batch, target_batch in data_loader:
+      flattened_batch = image_batch.reshape(image_batch.shape[0], -1)
+      out = model.forward(flattened_batch)
+
+      target_batch = np.array(target_batch)
+      conf_mat = confusion_matrix(out, target_batch)
+
+      num_processed_points += len(flattened_batch)
+      
+      metrics_batch = confusion_matrix_to_metrics(conf_mat)
+      metrics['accuracy'] += len(flattened_batch)*metrics_batch['accuracy']
+      metrics['precision'] += len(flattened_batch)*metrics_batch['precision']
+      metrics['recall'] += len(flattened_batch)*metrics_batch['accuracy']
+      metrics['f1_beta'] += len(flattened_batch)*metrics_batch['f1_beta']
+
+    metrics['accuracy'] /= num_processed_points
+    metrics['precision'] /= num_processed_points
+    metrics['recall'] /= num_processed_points
+    metrics['f1_beta'] /= num_processed_points
+      
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -172,6 +198,7 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     # PUT YOUR CODE HERE  #
     #######################
 
+    """
     train_data = cifar10_loader['train'].dataset.dataset.data
     train_targets = np.array(cifar10_loader['train'].dataset.dataset.targets)
 
@@ -180,16 +207,51 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     
     test_data = cifar10_loader['test'].dataset.data
     test_targets = np.array(cifar10_loader['test'].dataset.targets)
+    """
+
+    train_loader = cifar10_loader['train']
+    validation_loader = cifar10_loader['validation']
+    test_loader = cifar10_loader['test']
 
     # TODO: Initialize model and loss module
-    model = ...
-    loss_module = ...
+
+    n_inputs = 32*32*3
+    model = MLP(n_inputs=n_inputs, n_hidden=hidden_dims, n_classes=10)
+    loss_module = CrossEntropyModule()
+
     # TODO: Training loop including validation
-    val_accuracies = ...
+
+    train_loss = []
+    val_accuracies = []
+    for i in range(epochs):
+      for image_batch, target_batch in train_loader:
+        flattened_batch = image_batch.reshape(image_batch.shape[0], -1)
+        out = model.forward(flattened_batch)
+
+        target_batch = np.array(target_batch)
+        train_loss.append(loss_module.forward(out, target_batch))
+
+        dL = loss_module.backward(out, target_batch)
+        model.backward(dL)
+
+        for layer_index, layer in enumerate(model.hidden_layers):
+          if layer_index % 2 == 0:
+            layer.params['weight'] -= lr*layer.grads['weight']
+            layer.params['bias'] -= lr*layer.grads['bias']
+
+        model.output_layer[0].params['weight'] -= lr*model.output_layer[0].grads['weight']
+        model.output_layer[0].params['bias'] -= lr*model.output_layer[0].grads['bias']
+
+        val_accuracies.append(evaluate_model(model, validation_loader, 10)['accuracy'])
+        if len(val_accuracies) > 1 and np.isclose(val_accuracies[-2], val_accuracies[-1]):
+           break
+        
+        print(train_loss[-1])
+
     # TODO: Test best model
-    test_accuracy = ...
+    #test_accuracy = ...
     # TODO: Add any information you might want to save for plotting
-    logging_info = ...
+    #logging_info = ...
     #######################
     # END OF YOUR CODE    #
     #######################
