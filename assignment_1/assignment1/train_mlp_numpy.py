@@ -49,6 +49,13 @@ def confusion_matrix(predictions, targets):
     # PUT YOUR CODE HERE  #
     #######################
 
+    n_classes = predictions.shape[1]
+
+    conf_mat = np.zeros((n_classes, n_classes))
+    integer_predictions = np.argmax(predictions, axis=1)
+    for i, j in zip(integer_predictions, targets):
+      conf_mat[i, j] += 1
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -69,6 +76,22 @@ def confusion_matrix_to_metrics(confusion_matrix, beta=1.):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+    
+    n_classes = confusion_matrix.shape[0]
+
+    metrics = {}
+    metrics['accuracy'] = np.trace(confusion_matrix)/np.sum(confusion_matrix)
+    metrics['precision'] = np.zeros(n_classes)
+    metrics['recall'] = np.zeros(n_classes)
+    metrics['f1_beta'] = np.zeros(n_classes)
+    for i in range(n_classes):
+      metrics['precision'][i] = confusion_matrix[i, i]/np.sum(confusion_matrix[i, :])
+      metrics['recall'][i] = confusion_matrix[i, i]/np.sum(confusion_matrix[:, i])
+
+      precision = metrics['precision'][i]
+      recall = metrics['recall'][i]
+      metrics['f1_beta'][i] = (1 + pow(beta, 2))*precision*recall/(pow(beta, 2)*precision + recall)
+      
 
     #######################
     # END OF YOUR CODE    #
@@ -148,6 +171,15 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
+    train_data = cifar10_loader['train'].dataset.dataset.data
+    train_targets = np.array(cifar10_loader['train'].dataset.dataset.targets)
+
+    validation_data = cifar10_loader['validation'].dataset.dataset.data
+    validation_targets = np.array(cifar10_loader['validation'].dataset.dataset.targets)
+    
+    test_data = cifar10_loader['test'].dataset.data
+    test_targets = np.array(cifar10_loader['test'].dataset.targets)
 
     # TODO: Initialize model and loss module
     model = ...

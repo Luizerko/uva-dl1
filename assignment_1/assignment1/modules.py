@@ -51,11 +51,7 @@ class LinearModule(object):
         # PUT YOUR CODE HERE  #
         #######################
 
-        if input_layer:
-          self.params['weight'] = np.identity(in_features)
-        else:
-          self.params['weight'] = np.random.normal(scale=np.sqrt(2/in_features), size=(out_features, in_features))
-          
+        self.params['weight'] = np.random.normal(scale=np.sqrt(2/in_features), size=(out_features, in_features))  
         self.params['bias'] = np.zeros((1, out_features))
 
         self.grads['weight'] = np.zeros((out_features, in_features))

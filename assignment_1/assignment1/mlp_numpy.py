@@ -52,7 +52,25 @@ class MLP(object):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        pass
+
+        self.hidden_layers = []
+        for i, n in enumerate(n_hidden):
+          if i == 0:  
+            self.hidden_layers.append(LinearModule(in_features=n_inputs, out_features=n))
+          else:
+            self.hidden_layers.append(LinearModule(in_features=prev_n, out_features=n))
+
+          self.hidden_layers.append(ELUModule())
+          prev_n = n
+        
+        if len(n_hidden) > 0:
+          self.output_layer = [LinearModule(in_features=n, out_features=n_classes)]
+        else:
+          self.output_layer = [LinearModule(in_features=n_inputs, out_features=n_classes)]
+
+        self.output_layer.append(SoftMaxModule())
+
+
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -75,6 +93,19 @@ class MLP(object):
         # PUT YOUR CODE HERE  #
         #######################
 
+        for i, layer in enumerate(self.hidden_layers):
+          if i == 0:
+            out = layer.forward(x)
+          else:
+            out = layer.forward(out)
+
+        if len(self.hidden_layers) > 0:
+          out = self.output_layer[0].forward(out)
+        else:
+          out = self.output_layer[0].forward(x)
+
+        out = self.output_layer[1].forward(out)
+
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -95,7 +126,15 @@ class MLP(object):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        pass
+
+        self.gradients = []
+
+        self.gradients.append(self.output_layer[1].backward(dout))
+        self.gradients.append(self.output_layer[0].backward(self.gradients[-1]))
+
+        for i, layer in enumerate(self.hidden_layers.reverse()):
+          self.gradients.append(layer.backward(self.gradients[-1]))
+
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -112,7 +151,11 @@ class MLP(object):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        pass
+        for layer in self.hidden_layers:
+          layer.clear_cache()
+
+        self.output_layer[0].clear_cache()
+        self.output_layer[1].clear_cache()
         #######################
         # END OF YOUR CODE    #
         #######################
