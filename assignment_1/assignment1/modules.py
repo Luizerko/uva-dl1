@@ -82,7 +82,8 @@ class LinearModule(object):
 
         self.input = x
 
-        out = x @ self.params['weight'].transpose() + np.vstack([self.params['bias'] for n in range(x.shape[0])])
+        bias_matrix = np.tile(self.params['bias'], (x.shape[0], 1))
+        out = x @ self.params['weight'].transpose() + bias_matrix
 
         #######################
         # END OF YOUR CODE    #

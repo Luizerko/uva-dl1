@@ -85,12 +85,12 @@ def confusion_matrix_to_metrics(confusion_matrix, beta=1.):
     metrics['recall'] = np.zeros(n_classes)
     metrics['f1_beta'] = np.zeros(n_classes)
     for i in range(n_classes):
-      metrics['precision'][i] = confusion_matrix[i, i]/np.sum(confusion_matrix[i, :])
-      metrics['recall'][i] = confusion_matrix[i, i]/np.sum(confusion_matrix[:, i])
+      metrics['precision'][i] = confusion_matrix[i, i]/(np.sum(confusion_matrix[i, :]) + 1e-6)
+      metrics['recall'][i] = confusion_matrix[i, i]/(np.sum(confusion_matrix[:, i]) + 1e-6)
 
       precision = metrics['precision'][i]
       recall = metrics['recall'][i]
-      metrics['f1_beta'][i] = (1 + pow(beta, 2))*precision*recall/(pow(beta, 2)*precision + recall)
+      metrics['f1_beta'][i] = (1 + pow(beta, 2))*precision*recall/(pow(beta, 2)*precision + recall + + 1e-6)
       
 
     #######################
@@ -221,10 +221,13 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
 
     # TODO: Training loop including validation
 
+    #import ipdb
+    #ipdb.set_trace()
+
     train_loss = []
     val_accuracies = []
     for i in range(epochs):
-      for image_batch, target_batch in train_loader:
+      for count, (image_batch, target_batch) in enumerate(tqdm(train_loader)):
         flattened_batch = image_batch.reshape(image_batch.shape[0], -1)
         out = model.forward(flattened_batch)
 
@@ -241,17 +244,31 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
 
         model.output_layer[0].params['weight'] -= lr*model.output_layer[0].grads['weight']
         model.output_layer[0].params['bias'] -= lr*model.output_layer[0].grads['bias']
-
-        val_accuracies.append(evaluate_model(model, validation_loader, 10)['accuracy'])
-        if len(val_accuracies) > 1 and np.isclose(val_accuracies[-2], val_accuracies[-1]):
-           break
         
-        print(train_loss[-1])
+        #if count % 50 == 0:
+        #  print('Train Loss: {}'.format(train_loss[-1]))
+      
+      val_accuracies.append(evaluate_model(model, validation_loader, 10)['accuracy'])
+      #print('Validation Accuracy: {}'.format(val_accuracies[-1]))
+      if len(val_accuracies) > 1 and val_accuracies[-2] > val_accuracies[-1]:
+        if np.isclose(val_accuracies[-2], val_accuracies[-1], rtol=3e-2):
+          continue
+        else:
+          break
 
     # TODO: Test best model
-    #test_accuracy = ...
+    test_accuracy = evaluate_model(model, test_loader, 10)['accuracy']
+    print('Test Accuracy: {}'.format(test_accuracy))
     # TODO: Add any information you might want to save for plotting
-    #logging_info = ...
+    logging_dict = {'train_loss': train_loss, 'validation_accuracy': val_accuracies}
+    
+    import matplotlib.pyplot as plt
+    plt.plot(np.arange(len(train_loss)), train_loss, c='r', label='Train Loss')
+    plt.legend()
+    plt.show()
+    plt.plot(np.linspace(0, len(train_loss), len(val_accuracies)), val_accuracies, c='b', label='Validation Accuracy')
+    plt.legend()
+    plt.show()
     #######################
     # END OF YOUR CODE    #
     #######################

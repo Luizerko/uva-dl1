@@ -132,7 +132,7 @@ class MLP(object):
         self.gradients.append(self.output_layer[1].backward(dout))
         self.gradients.append(self.output_layer[0].backward(self.gradients[-1]))
 
-        for i, layer in enumerate(self.hidden_layers.reverse()):
+        for i, layer in enumerate(self.hidden_layers[::-1]):
           self.gradients.append(layer.backward(self.gradients[-1]))
 
         #######################
