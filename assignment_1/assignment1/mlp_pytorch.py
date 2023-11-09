@@ -59,7 +59,26 @@ class MLP(nn.Module):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        pass
+        
+        self.hidden_layers = []
+        for i, n in enumerate(n_hidden):
+          if i == 0:  
+            self.hidden_layers.append(nn.Linear(n_inputs, n))
+          else:
+            self.hidden_layers.append(nn.Linear(prev_n, n))
+
+          if use_batch_norm:
+            self.hidden_layers.append(nn.BatchNorm1d)
+          self.hidden_layers.append(nn.ELU())
+          prev_n = n
+        
+        if len(n_hidden) > 0:
+          self.output_layer = [nn.Linear(in_features=n, out_features=n_classes)]
+        else:
+          self.output_layer = [nn.Linear(in_features=n_inputs, out_features=n_classes)]
+
+        self.output_layer.append(nn.Softmax())
+
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -81,6 +100,19 @@ class MLP(nn.Module):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
+
+        for i, layer in enumerate(self.hidden_layers):
+          if i == 0:
+            out = layer(x)
+          else:
+            out = layer(out)
+
+        if len(self.hidden_layers) > 0:
+          out = self.output_layer[0](out)
+        else:
+          out = self.output_layer[0](x)
+
+        out = self.output_layer[1](out)
 
         #######################
         # END OF YOUR CODE    #

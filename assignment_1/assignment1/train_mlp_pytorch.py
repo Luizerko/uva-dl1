@@ -158,12 +158,62 @@ def train(hidden_dims, lr, use_batch_norm, batch_size, epochs, seed, data_dir):
     # PUT YOUR CODE HERE  #
     #######################
 
+    train_loader = cifar10_loader['train']
+    validation_loader = cifar10_loader['validation']
+    test_loader = cifar10_loader['test']
+
     # TODO: Initialize model and loss module
-    model = ...
-    loss_module = ...
+    
+    n_inputs = 32*32*3
+    model = MLP(n_inputs=n_inputs, n_hidden=hidden_dims, n_classes=10, use_batch_norm=use_batch_norm)
+    model.to(device)
+    loss_module = nn.CrossEntropyLoss()
+    
     # TODO: Training loop including validation
     # TODO: Do optimization with the simple SGD optimizer
-    val_accuracies = ...
+
+    optimizer = optim.SGD(model.parameters(), lr=lr)
+    model.train()
+
+    train_loss = []
+    val_accuracies = []
+    best_val_accuracy = 0
+    for i in range(epochs):
+      for count, (image_batch, target_batch) in enumerate(tqdm(train_loader)):
+        flattened_batch = image_batch.reshape(image_batch.shape[0], -1)
+        out = model.forward(flattened_batch)
+
+        target_batch = np.array(target_batch)
+        train_loss.append(loss_module.forward(out, target_batch))
+
+        dL = loss_module.backward(out, target_batch)
+        model.backward(dL)
+
+        for layer_index, layer in enumerate(model.hidden_layers):
+          if layer_index % 2 == 0:
+            layer.params['weight'] -= lr*layer.grads['weight']
+            layer.params['bias'] -= lr*layer.grads['bias']
+
+        model.output_layer[0].params['weight'] -= lr*model.output_layer[0].grads['weight']
+        model.output_layer[0].params['bias'] -= lr*model.output_layer[0].grads['bias']
+        
+        #if count % 50 == 0:
+        #  print('Train Loss: {}'.format(train_loss[-1]))
+      
+      val_accuracies.append(evaluate_model(model, validation_loader, 10)['accuracy'])
+      #print('Validation Accuracy: {}'.format(val_accuracies[-1]))
+      if len(val_accuracies) > 1 and val_accuracies[-2] > val_accuracies[-1]:
+        if np.isclose(val_accuracies[-2], val_accuracies[-1], rtol=5e-2):
+          continue
+        else:
+          break
+      elif val_accuracies[-1] > best_val_accuracy:
+        best_val_accuracy = val_accuracies[-1]
+        best_model = deepcopy(model)
+
+    model = best_model
+    model.clear_cache()
+    
     # TODO: Test best model
     test_accuracy = ...
     # TODO: Add any information you might want to save for plotting

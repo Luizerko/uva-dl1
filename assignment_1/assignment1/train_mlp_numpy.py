@@ -226,6 +226,7 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
 
     train_loss = []
     val_accuracies = []
+    best_val_accuracy = 0
     for i in range(epochs):
       for count, (image_batch, target_batch) in enumerate(tqdm(train_loader)):
         flattened_batch = image_batch.reshape(image_batch.shape[0], -1)
@@ -251,23 +252,31 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
       val_accuracies.append(evaluate_model(model, validation_loader, 10)['accuracy'])
       #print('Validation Accuracy: {}'.format(val_accuracies[-1]))
       if len(val_accuracies) > 1 and val_accuracies[-2] > val_accuracies[-1]:
-        if np.isclose(val_accuracies[-2], val_accuracies[-1], rtol=3e-2):
+        if np.isclose(val_accuracies[-2], val_accuracies[-1], rtol=5e-2):
           continue
         else:
           break
+      elif val_accuracies[-1] > best_val_accuracy:
+        best_val_accuracy = val_accuracies[-1]
+        best_model = deepcopy(model)
+
+    model = best_model
+    model.clear_cache()
 
     # TODO: Test best model
     test_accuracy = evaluate_model(model, test_loader, 10)['accuracy']
     print('Test Accuracy: {}'.format(test_accuracy))
     # TODO: Add any information you might want to save for plotting
-    logging_dict = {'train_loss': train_loss, 'validation_accuracy': val_accuracies}
+    logging_dict = {'train_loss': train_loss, 'validation_accuracy': val_accuracies, 'test_accuracy': test_accuracy}
     
     import matplotlib.pyplot as plt
-    plt.plot(np.arange(len(train_loss)), train_loss, c='r', label='Train Loss')
-    plt.legend()
+    
+    plt.title('Training Loss per Batch')
+    plt.plot(np.arange(len(train_loss)), train_loss, c='r')
     plt.show()
-    plt.plot(np.linspace(0, len(train_loss), len(val_accuracies)), val_accuracies, c='b', label='Validation Accuracy')
-    plt.legend()
+
+    plt.title('Validation Accuracy per Epoch')
+    plt.plot(np.linspace(1, i+1, i+1), val_accuracies, c='b')
     plt.show()
     #######################
     # END OF YOUR CODE    #
