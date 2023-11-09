@@ -90,7 +90,7 @@ def confusion_matrix_to_metrics(confusion_matrix, beta=1.):
 
       precision = metrics['precision'][i]
       recall = metrics['recall'][i]
-      metrics['f1_beta'][i] = (1 + pow(beta, 2))*precision*recall/(pow(beta, 2)*precision + recall + + 1e-6)
+      metrics['f1_beta'][i] = (1 + pow(beta, 2))*precision*recall/(pow(beta, 2)*precision + recall + 1e-6)
       
 
     #######################
@@ -198,17 +198,6 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     # PUT YOUR CODE HERE  #
     #######################
 
-    """
-    train_data = cifar10_loader['train'].dataset.dataset.data
-    train_targets = np.array(cifar10_loader['train'].dataset.dataset.targets)
-
-    validation_data = cifar10_loader['validation'].dataset.dataset.data
-    validation_targets = np.array(cifar10_loader['validation'].dataset.dataset.targets)
-    
-    test_data = cifar10_loader['test'].dataset.data
-    test_targets = np.array(cifar10_loader['test'].dataset.targets)
-    """
-
     train_loader = cifar10_loader['train']
     validation_loader = cifar10_loader['validation']
     test_loader = cifar10_loader['test']
@@ -269,15 +258,16 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     # TODO: Add any information you might want to save for plotting
     logging_dict = {'train_loss': train_loss, 'validation_accuracy': val_accuracies, 'test_accuracy': test_accuracy}
     
-    import matplotlib.pyplot as plt
+    #import matplotlib.pyplot as plt
     
-    plt.title('Training Loss per Batch')
-    plt.plot(np.arange(len(train_loss)), train_loss, c='r')
-    plt.show()
+    #plt.title('Training Loss per Batch')
+    #plt.plot(np.arange(len(train_loss)), train_loss, c='r')
+    #plt.show()
 
-    plt.title('Validation Accuracy per Epoch')
-    plt.plot(np.linspace(1, i+1, i+1), val_accuracies, c='b')
-    plt.show()
+    #plt.title('Validation Accuracy per Epoch')
+    #plt.plot(np.linspace(1, i+1, i+1), val_accuracies, c='b')
+    #plt.show()
+
     #######################
     # END OF YOUR CODE    #
     #######################

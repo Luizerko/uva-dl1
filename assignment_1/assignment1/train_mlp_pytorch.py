@@ -50,6 +50,13 @@ def confusion_matrix(predictions, targets):
     # PUT YOUR CODE HERE  #
     #######################
 
+    n_classes = predictions.shape[1]
+
+    conf_mat = np.zeros((n_classes, n_classes))
+    integer_predictions = np.argmax(predictions, axis=1)
+    for i, j in zip(integer_predictions, targets):
+      conf_mat[i, j] += 1
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -70,6 +77,21 @@ def confusion_matrix_to_metrics(confusion_matrix, beta=1.):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
+    n_classes = confusion_matrix.shape[0]
+
+    metrics = {}
+    metrics['accuracy'] = np.trace(confusion_matrix)/np.sum(confusion_matrix)
+    metrics['precision'] = np.zeros(n_classes)
+    metrics['recall'] = np.zeros(n_classes)
+    metrics['f1_beta'] = np.zeros(n_classes)
+    for i in range(n_classes):
+      metrics['precision'][i] = confusion_matrix[i, i]/(np.sum(confusion_matrix[i, :]) + 1e-6)
+      metrics['recall'][i] = confusion_matrix[i, i]/(np.sum(confusion_matrix[:, i]) + 1e-6)
+
+      precision = metrics['precision'][i]
+      recall = metrics['recall'][i]
+      metrics['f1_beta'][i] = (1 + pow(beta, 2))*precision*recall/(pow(beta, 2)*precision + recall + + 1e-6)
 
     #######################
     # END OF YOUR CODE    #
@@ -97,6 +119,36 @@ def evaluate_model(model, data_loader, num_classes=10):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    metrics = {}
+    metrics['accuracy'] = 0
+    metrics['precision'] = np.zeros(num_classes)
+    metrics['recall'] = np.zeros(num_classes)
+    metrics['f1_beta'] = np.zeros(num_classes)
+
+    num_processed_points = 0
+    for image_batch, target_batch in data_loader:
+      flattened_batch = torch.flatten(image_batch, start_dim=1)
+      flattened_batch = flattened_batch.to(device)
+      out = model.forward(flattened_batch)
+
+      target_batch = target_batch.numpy()
+      conf_mat = confusion_matrix(out.detach().numpy(), target_batch)
+
+      num_processed_points += len(flattened_batch)
+      
+      metrics_batch = confusion_matrix_to_metrics(conf_mat)
+      metrics['accuracy'] += len(flattened_batch)*metrics_batch['accuracy']
+      metrics['precision'] += len(flattened_batch)*metrics_batch['precision']
+      metrics['recall'] += len(flattened_batch)*metrics_batch['accuracy']
+      metrics['f1_beta'] += len(flattened_batch)*metrics_batch['f1_beta']
+
+    metrics['accuracy'] /= num_processed_points
+    metrics['precision'] /= num_processed_points
+    metrics['recall'] /= num_processed_points
+    metrics['f1_beta'] /= num_processed_points
 
     #######################
     # END OF YOUR CODE    #
@@ -180,24 +232,19 @@ def train(hidden_dims, lr, use_batch_norm, batch_size, epochs, seed, data_dir):
     best_val_accuracy = 0
     for i in range(epochs):
       for count, (image_batch, target_batch) in enumerate(tqdm(train_loader)):
-        flattened_batch = image_batch.reshape(image_batch.shape[0], -1)
+        flattened_batch = torch.flatten(image_batch, start_dim=1)
+        flattened_batch = flattened_batch.to(device)
         out = model.forward(flattened_batch)
 
-        target_batch = np.array(target_batch)
-        train_loss.append(loss_module.forward(out, target_batch))
+        target_batch = target_batch.to(device)
+        loss = loss_module(out, target_batch)
+        train_loss.append(loss.item())
 
-        dL = loss_module.backward(out, target_batch)
-        model.backward(dL)
-
-        for layer_index, layer in enumerate(model.hidden_layers):
-          if layer_index % 2 == 0:
-            layer.params['weight'] -= lr*layer.grads['weight']
-            layer.params['bias'] -= lr*layer.grads['bias']
-
-        model.output_layer[0].params['weight'] -= lr*model.output_layer[0].grads['weight']
-        model.output_layer[0].params['bias'] -= lr*model.output_layer[0].grads['bias']
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
         
-        #if count % 50 == 0:
+        #if count % 100 == 0:
         #  print('Train Loss: {}'.format(train_loss[-1]))
       
       val_accuracies.append(evaluate_model(model, validation_loader, 10)['accuracy'])
@@ -212,12 +259,25 @@ def train(hidden_dims, lr, use_batch_norm, batch_size, epochs, seed, data_dir):
         best_model = deepcopy(model)
 
     model = best_model
-    model.clear_cache()
-    
+    optimizer.zero_grad()
+    torch.cuda.empty_cache()
+
     # TODO: Test best model
-    test_accuracy = ...
+    test_accuracy = evaluate_model(model, test_loader, 10)['accuracy']
+    print('Test Accuracy: {}'.format(test_accuracy))
     # TODO: Add any information you might want to save for plotting
-    logging_info = ...
+    logging_info = {'train_loss': train_loss, 'validation_accuracy': val_accuracies, 'test_accuracy': test_accuracy}
+    
+    import matplotlib.pyplot as plt
+    
+    plt.title('Training Loss per Batch')
+    plt.plot(np.arange(len(train_loss)), train_loss, c='r')
+    plt.show()
+
+    plt.title('Validation Accuracy per Epoch')
+    plt.plot(np.linspace(1, i+1, i+1), val_accuracies, c='b')
+    plt.show()
+
     #######################
     # END OF YOUR CODE    #
     #######################
