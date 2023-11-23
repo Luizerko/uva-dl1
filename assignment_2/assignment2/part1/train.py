@@ -52,10 +52,13 @@ def get_model(num_classes=100):
     #######################
 
     # Get the pretrained ResNet18 model on ImageNet from torchvision.models
-    pass
+    model = models.resnet18(weights='DEFAULT')
 
     # Randomly initialize and modify the model's last layer for CIFAR100.
-    pass
+    new_in_features = model.fc.in_features
+    model.fc = nn.Linear(new_in_features, num_classes)
+    nn.init.normal_(model.fc.weight, 0.0, 0.01)
+    nn.init.constant_(model.fc.bias, 0.0)
 
     #######################
     # END OF YOUR CODE    #
@@ -85,16 +88,52 @@ def train_model(model, lr, batch_size, epochs, data_dir, checkpoint_name, device
     #######################
 
     # Load the datasets
-    pass
+    train_data, val_data = get_train_validation_set(data_dir)
+
+    train_dataloader = data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, drop_last=True)
+    val_dataloader = data.DataLoader(dataset=val_data, batch_size=batch_size, shuffle=False, drop_last=False)
 
     # Initialize the optimizer (Adam) to train the last layer of the model.
-    pass
+    optimizer = torch.optim.Adam(model.fc.parameters(), lr=lr)
+    loss_module = nn.CrossEntropyLoss()
 
     # Training loop with validation after each epoch. Save the best model.
-    pass
+    train_loss = []
+    val_acc = []
+    best_val_acc = 0
+
+    model.to(device)
+    for epoch in range(epochs):
+        model.train()
+        for batch_num, (data_batch, target_batch) in enumerate(train_dataloader):
+            data_batch.to(device)
+            target_batch.to(device)
+            
+            output = model(data_batch)
+            loss = loss_module(output, target_batch)
+            train_loss.append(loss.item())
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if batch_num != 0 and batch_num % 100 == 0:
+                print('Epoch {}: batch number {} with training loss {}'.format(epoch+1, batch_num, train_loss[-1]))
+            
+        val_acc.append(evaluate_model(model, val_dataloader, device))
+        if epoch > 0 and val_acc[-2] > val_acc[-1]:
+            if val_acc[-2] - val_acc[-1] > 0.03:
+                break
+            else:
+                continue
+        else:
+            best_val_acc = val_acc[-1]
+            torch.save({'epoch': epoch+1, 'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict, 'loss': train_loss[-1], 'val_acc': best_val_acc}, checkpoint_name)
 
     # Load the best model on val accuracy and return it.
-    pass
+    checkpoint = torch.load(checkpoint_name)
+    model.load_state_dict(checkpoint['model_state_dict'])
 
     #######################
     # END OF YOUR CODE    #
@@ -119,11 +158,25 @@ def evaluate_model(model, data_loader, device):
     # PUT YOUR CODE HERE  #
     #######################
     # Set model to evaluation mode (Remember to set it back to training mode in the training loop)
-    pass
+    model.eval()
 
     # Loop over the dataset and compute the accuracy. Return the accuracy
     # Remember to use torch.no_grad().
-    pass
+    with torch.no_grad():
+        acc = 0
+        data_processed = 0
+
+        for data_batch, target_batch in data_loader:
+            data_batch.to(device)
+            target_batch.to(device)
+
+            output = model(data_batch)
+            predictions = torch.argmax(output, dim=1)
+            
+            acc += torch.sum(predictions == target_batch)
+            data_processed += len(target_batch)
+
+    accuracy = acc/data_processed
 
     #######################
     # END OF YOUR CODE    #
@@ -163,7 +216,8 @@ def main(lr, batch_size, epochs, data_dir, seed, augmentation_name, test_noise):
     pass
 
     # Evaluate the model on the test set
-    pass
+    test_data = get_test_set(data_dir, False)
+    test_dataloader = data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False, drop_last=False)
 
     #######################
     # END OF YOUR CODE    #
