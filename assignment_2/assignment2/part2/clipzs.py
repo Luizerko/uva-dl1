@@ -171,7 +171,16 @@ class ZeroshotCLIP(nn.Module):
         #   https://github.com/openai/CLIP#api
 
         # remove this line once you implement the function
-        raise NotImplementedError("Implement the precompute_text_features function.")
+        
+        tokens = [clip.tokenize(prompt) for prompt in prompts]
+        tokens = torch.cat(tokens).to(device)
+        
+        with torch.no_grad():
+            text_features = clip_model.encode_text(tokens)
+
+        text_features /= text_features.norm(dim=-1, keepdim=True)
+
+        return text_features
 
         #######################
         # END OF YOUR CODE    #
@@ -210,7 +219,18 @@ class ZeroshotCLIP(nn.Module):
         #   https://github.com/openai/CLIP#api
 
         # remove this line once you implement the function
-        raise NotImplementedError("Implement the model_inference function.")
+
+        if len(image.size()) < 4:
+            image = image.unsqueeze(0)
+        
+        image = image.to(self.device)
+        with torch.no_grad():
+            image_features = self.clip_model.encode_image(image)
+
+        image_features /= image_features.norm(dim=-1, keepdim=True)
+        similarity_logits = (self.clip_model.logit_scale * image_features @ self.text_features.T)
+
+        return similarity_logits
 
         #######################
         # END OF YOUR CODE    #
@@ -372,7 +392,18 @@ def main():
     # - You can use the model_inference method of the ZeroshotCLIP class to get the logits
 
     # you can remove the following line once you have implemented the inference loop
-    raise NotImplementedError("Implement the inference loop")
+
+    for data_batch, target_batch in tqdm(loader):
+        acc = 0
+
+        output = clipzs.model_inference(data_batch)
+        
+        with torch.no_grad():
+            pred = output.topk(1)[1].cpu()
+            acc += np.sum((pred == target_batch.unsqueeze(1)).numpy())
+
+        acc /= args.batch_size
+        top1.update(acc, args.batch_size)
 
     #######################
     # END OF YOUR CODE    #
@@ -381,7 +412,6 @@ def main():
     print(
         f"Zero-shot CLIP top-1 accuracy on {args.dataset}/{args.split}: {top1.avg*100}"
     )
-
 
 if __name__ == "__main__":
     main()
