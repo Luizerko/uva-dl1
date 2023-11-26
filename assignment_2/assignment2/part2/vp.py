@@ -45,7 +45,7 @@ class FixedPatchPrompter(nn.Module):
         # - You can define variable parameters using torch.nn.Parameter
         # - You can initialize the patch randomly in N(0, 1) using torch.randn
 
-        raise NotImplementedError
+        self.patch = nn.Parameter(torch.randn((1, 3, args.prompt_size, args.prompt_size)))
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -61,7 +61,15 @@ class FixedPatchPrompter(nn.Module):
         # - It is always advisable to implement and then visualize if
         #   your prompter does what you expect it to do.
 
-        raise NotImplementedError
+        batch_size = x.size()[0]
+        batch_patch = torch.cat([self.patch for batch in range(batch_size)])
+
+        h, w = self.patch.size()[2], self.patch.size()[3]
+        output = x.clone()
+        output[:, :, :h, :w] = x[:, :, :h, :w] + batch_patch
+
+        return output
+
         #######################
         # END OF YOUR CODE    #
         #######################

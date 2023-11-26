@@ -88,7 +88,7 @@ def train_model(model, lr, batch_size, epochs, data_dir, checkpoint_name, device
     #######################
 
     # Load the datasets
-    train_data, val_data = get_train_validation_set(data_dir)
+    train_data, val_data = get_train_validation_set(data_dir, validation_size=5000, augmentation_name=augmentation_name)
 
     train_dataloader = data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, drop_last=True)
     val_dataloader = data.DataLoader(dataset=val_data, batch_size=batch_size, shuffle=False, drop_last=False)
@@ -106,21 +106,24 @@ def train_model(model, lr, batch_size, epochs, data_dir, checkpoint_name, device
     for epoch in range(epochs):
         model.train()
         for batch_num, (data_batch, target_batch) in enumerate(train_dataloader):
-            data_batch.to(device)
-            target_batch.to(device)
+            data_batch = data_batch.to(device)
+            target_batch = target_batch.to(device)
+            
+            optimizer.zero_grad()
             
             output = model(data_batch)
             loss = loss_module(output, target_batch)
             train_loss.append(loss.item())
 
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             if batch_num != 0 and batch_num % 100 == 0:
                 print('Epoch {}: batch number {} with training loss {}'.format(epoch+1, batch_num, train_loss[-1]))
-            
+
         val_acc.append(evaluate_model(model, val_dataloader, device))
+        print('Epoch {}: validation accuracy {}\n'.format(epoch+1, val_acc[-1]))
+
         if epoch > 0 and val_acc[-2] > val_acc[-1]:
             if val_acc[-2] - val_acc[-1] > 0.03:
                 break
@@ -167,8 +170,8 @@ def evaluate_model(model, data_loader, device):
         data_processed = 0
 
         for data_batch, target_batch in data_loader:
-            data_batch.to(device)
-            target_batch.to(device)
+            data_batch = data_batch.to(device)
+            target_batch = target_batch.to(device)
 
             output = model(data_batch)
             predictions = torch.argmax(output, dim=1)
@@ -201,23 +204,27 @@ def main(lr, batch_size, epochs, data_dir, seed, augmentation_name, test_noise):
     # PUT YOUR CODE HERE  #
     #######################
     # Set the seed for reproducibility
-    pass
+    set_seed(seed)
 
     # Set the device to use for training
-    pass
+    device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
 
     # Load the model
-    pass
+    model = get_model()
 
     # Get the augmentation to use
-    pass
+    augmentation_name = augmentation_name
 
     # Train the model
-    pass
+    train_model(model, lr=lr, batch_size=batch_size, epochs=epochs, data_dir=data_dir,
+                checkpoint_name='checkpoint.pt', device=device, augmentation_name=augmentation_name)
 
     # Evaluate the model on the test set
-    test_data = get_test_set(data_dir, False)
+    test_data = get_test_set(data_dir, test_noise)
     test_dataloader = data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False, drop_last=False)
+
+    test_acc = evaluate_model(model, test_dataloader, device)
+    print('Test accuracy {}'.format(test_acc))
 
     #######################
     # END OF YOUR CODE    #

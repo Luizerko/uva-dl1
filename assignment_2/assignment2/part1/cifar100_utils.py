@@ -59,10 +59,30 @@ def add_augmentation(augmentation_name, transform_list):
     #######################
 
     # Create a new transformation based on the augmentation_name.
-    pass
+    if augmentation_name == 'test_noise':
+        new_tranform = AddGaussianNoise()
+    
+    elif augmentation_name == 'rotation':
+        new_tranform = transforms.RandomRotation(degrees=(0, 360))
+    
+    elif augmentation_name == 'perspective':
+        new_tranform = transforms.RandomPerspective()
+    
+    elif augmentation_name == 'color_jitter':
+        new_tranform = transforms.ColorJitter(brightness=0.5, hue=0.3)
+
+    elif augmentation_name == 'horizontal_flip':
+        new_tranform = transforms.RandomHorizontalFlip()
+
+    elif augmentation_name == 'vertical_flip':
+        new_tranform = transforms.RandomVerticalFlip()
+
+    elif augmentation_name == 'blur':
+        new_tranform = transforms.GaussianBlur(kernel_size=(5, 7))
+
 
     # Add the new transformation to the list.
-    pass
+    transform_list.append(new_tranform)
 
     #######################
     # END OF YOUR CODE    #
