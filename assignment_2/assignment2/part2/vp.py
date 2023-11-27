@@ -46,6 +46,7 @@ class FixedPatchPrompter(nn.Module):
         # - You can initialize the patch randomly in N(0, 1) using torch.randn
 
         self.patch = nn.Parameter(torch.randn((1, 3, args.prompt_size, args.prompt_size)))
+        
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -96,7 +97,11 @@ class PadPrompter(nn.Module):
         # - Shape of self.pad_up and self.pad_down should be (1, 3, pad_size, image_size)
         # - See Fig 2.(g)/(h) and think about the shape of self.pad_left and self.pad_right
 
-        raise NotImplementedError
+        self.pad_up = nn.Parameter(torch.randn((1, 3, pad_size, image_size)))
+        self.pad_down = nn.Parameter(torch.randn((1, 3, pad_size, image_size)))
+        self.pad_left = nn.Parameter(torch.randn((1, 3, image_size - 2*pad_size, pad_size)))
+        self.pad_right = nn.Parameter(torch.randn((1, 3, image_size - 2*pad_size, pad_size)))
+        
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -112,7 +117,33 @@ class PadPrompter(nn.Module):
         # - It is always advisable to implement and then visualize if
         #   your prompter does what you expect it to do.
 
-        raise NotImplementedError
+        prompt = torch.zeros((1, 3, x.size()[2], x.size()[3]))
+        
+        h, w = self.pad_up.size()[2], self.pad_up.size()[3]
+        prompt[0, :, :h, :w] = self.pad_up
+
+        h, w = self.pad_down.size()[2], self.pad_down.size()[3]
+        prompt[0, :, -h:, :w] = self.pad_down
+
+        h, w = self.pad_left.size()[2], self.pad_left.size()[3]
+        prompt[0, :, w:-w, :w] = self.pad_left
+
+        h, w = self.pad_right.size()[2], self.pad_right.size()[3]
+        prompt[0, :, w:-w, -w:] = self.pad_right
+
+        batch_size = x.size()[0]
+        batch_patch = torch.cat([prompt for batch in range(batch_size)])
+
+        #import ipdb
+        #ipdb.set_trace()
+
+        batch_patch = batch_patch.to(x.device)
+
+        output = x.clone()
+        output = x + batch_patch
+
+        return output
+
         #######################
         # END OF YOUR CODE    #
         #######################
