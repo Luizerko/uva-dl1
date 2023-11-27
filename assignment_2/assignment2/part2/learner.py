@@ -28,7 +28,7 @@ import time
 
 from tqdm import tqdm
 from vpt_model import VisualPromptCLIP
-#from dpt_model import DeepPromptCLIP
+from dpt_model import DeepPromptCLIP
 from utils import cosine_lr, AverageMeter, ProgressMeter, accuracy, save_checkpoint, set_seed
 from dataset import load_dataset, construct_dataloader
 
