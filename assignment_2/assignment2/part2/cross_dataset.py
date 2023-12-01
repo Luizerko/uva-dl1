@@ -67,6 +67,9 @@ def parse_option():
         ],
         help="choose visual prompting method",
     )
+    parser.add_argument("--prompt_type", type=str, default="visual_prompt", help="what type of prompt to use")
+    parser.add_argument("--prompt_num", type=int, default=4, help="number of learnable deep prompts to use")
+    parser.add_argument("--injection_layer", type=int, default=0, help="id of transformer layer to inject prompt into")
     parser.add_argument(
         "--prompt_size", type=int, default=30, help="size for visual prompts"
     )
@@ -175,8 +178,7 @@ def main():
         # PUT YOUR CODE HERE  #
         #######################
         # TODO: Define `classnames` as a list of 10 + 100 class labels from CIFAR10 and CIFAR100
-
-        raise NotImplementedError
+        
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -204,7 +206,13 @@ def main():
         # TODO: Compute the text features (for each of the prompts defined above) using CLIP
         # Note: This is similar to the code you wrote in `clipzs.py`
 
-        raise NotImplementedError
+        tokens = [clip.tokenize(prompt) for prompt in prompts]
+        tokens = torch.cat(tokens).to(args.device)
+        
+        with torch.no_grad():
+            text_features = clip_model.encode_text(tokens)
+
+        text_features /= text_features.norm(dim=-1, keepdim=True)
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -220,7 +228,10 @@ def main():
         # That is, if a class in CIFAR100 corresponded to '4', it should now correspond to '14'
         # Set the result of this to the attribute cifar100_test.targets to override them
 
-        raise NotImplementedError
+        #import ipdb
+        #ipdb.set_trace()
+
+        cifar100_test.targets = (torch.tensor(cifar100_test.targets) + 10).tolist()
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -253,7 +264,13 @@ def main():
         # - accurary_all = acc_cifar10 * (% of cifar10 samples) \
         #                  + acc_cifar100 * (% of cifar100 samples)
 
-        raise NotImplementedError
+        #import ipdb
+        #ipdb.set_trace()
+
+        cifar10_percentage = len(cifar10_loader.dataset) / (len(cifar10_loader.dataset) + len(cifar100_loader.dataset))
+        cifar100_percentage = 1 - cifar10_percentage
+
+        accuracy_all = acc_cifar10 * cifar10_percentage + acc_cifar100 * cifar100_percentage
         #######################
         # END OF YOUR CODE    #
         #######################
