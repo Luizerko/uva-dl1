@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader, RandomSampler
 
 import pytorch_lightning as pl
-from lightning.pytorch.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateFinder
 
 

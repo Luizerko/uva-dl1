@@ -90,7 +90,17 @@ class CausalSelfAttention(nn.Module):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        raise NotImplementedError
+        
+        #import ipdb
+        #ipdb.set_trace()
+
+        attention = q @ k.transpose(-2, -1)
+        scaled_attention = attention / math.sqrt(q.size()[-1])
+        masked_attention = scaled_attention.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float('-inf'))
+        softmax_attention = F.softmax(masked_attention, dim=-1)
+        final_attention = self.attn_dropout(softmax_attention)
+        y = final_attention @ v
+        
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -392,7 +402,27 @@ class GPT(nn.Module):
             #######################
             # PUT YOUR CODE HERE  #
             #######################
-            raise NotImplementedError
+            
+            logits = self(idx_cond)
+            logits = logits[:, -1, :]/temperature
+            
+            if top_k is not None:
+                thresh, _ = torch.topk(logits, top_k)
+                logits = torch.where(logits < thresh[:, [-1]], float('-inf'), logits)
+            
+            probabilities = F.softmax(logits, dim=-1)
+
+            if do_sample:
+                distribution = torch.distributions.Categorical(probabilities)
+                idx_pred = distribution.sample().unsqueeze(1)
+            else:
+                _, idx_pred = torch.topk(probabilities, k=1, dim=-1)
+
+            #import ipdb
+            #ipdb.set_trace()
+
+            idx = torch.cat((idx, idx_pred), dim=1)
+            
             #######################
             # END OF YOUR CODE    #
             #######################
